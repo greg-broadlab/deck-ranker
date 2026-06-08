@@ -420,15 +420,13 @@ body {
 }
 
 .skip-link {
-    color: var(--gray-300);
-    font-size: 0.62rem;
+    color: var(--gray-400);
+    font-size: 0.7rem;
     text-decoration: none;
-    writing-mode: vertical-rl;
-    letter-spacing: 0.04em;
     transition: color 0.15s;
 }
 
-.skip-link:hover { color: var(--teal); }
+.skip-link:hover { color: var(--gray-600); }
 
 /* ── LIGHTBOX ────────────────────────────────────────── */
 .lightbox {
