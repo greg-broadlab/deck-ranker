@@ -8,15 +8,89 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-body { overflow: hidden; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-.compare-page {
-    height: calc(100vh - 56px);
-    display: flex;
-    flex-direction: column;
+/* ── ACTION BAR ── */
+.action-bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--white);
+    border-bottom: 2px solid var(--gray-200);
+    flex-shrink: 0;
+    z-index: 10;
 }
 
-/* Two slide panels */
+.action-choose {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--teal);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    min-width: 0;
+    width: 100%;
+    text-align: left;
+}
+
+.action-choose:hover:not(:disabled) { background: #0d5469; }
+.action-choose:disabled { background: var(--gray-200); color: var(--gray-400); cursor: default; }
+
+.action-choose-b { justify-content: flex-end; text-align: right; }
+
+.choose-arrow { font-size: 1rem; flex-shrink: 0; }
+
+.choose-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.action-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.neither-btn {
+    background: none;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-600);
+    padding: 0.45rem 1rem;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.neither-btn:hover:not(:disabled) { border-color: #C83B2A; color: #C83B2A; background: #FEF2F2; }
+.neither-btn:disabled { opacity: 0.35; cursor: default; }
+
+.skip-link {
+    font-size: 0.68rem;
+    color: var(--gray-400);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.skip-link:hover { color: var(--gray-600); }
+
+/* ── PANELS ── */
 .panels {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -35,21 +109,21 @@ body { overflow: hidden; }
 .panel:first-child { border-right: 1px solid var(--gray-200); }
 
 .panel-header {
-    padding: 0.75rem 1.25rem;
+    padding: 0.6rem 1rem;
     border-bottom: 1px solid var(--gray-100);
     flex-shrink: 0;
 }
 
 .panel-name {
+    font-size: 0.75rem;
     font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--teal-dark);
+    color: var(--gray-600);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.panel-meta { font-size: 0.7rem; color: var(--gray-400); margin-top: 0.1rem; }
+.panel-meta { font-size: 0.68rem; color: var(--gray-400); margin-top: 0.1rem; }
 
 .panel-slides {
     flex: 1;
@@ -59,12 +133,12 @@ body { overflow: hidden; }
     flex-direction: column;
     gap: 2px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.15) transparent;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
 .slide-img { width: 100%; display: block; flex-shrink: 0; cursor: zoom-in; }
+.slide-img:hover { opacity: 0.9; }
 
-/* VS badge floating between panels */
 .vs-badge {
     position: absolute;
     top: 50%;
@@ -74,87 +148,21 @@ body { overflow: hidden; }
     border: 2px solid var(--gray-200);
     color: var(--gray-400);
     font-weight: 700;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 0.1em;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    z-index: 5;
     pointer-events: none;
 }
 
-/* Action bar pinned to bottom */
-.action-bar {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.875rem 1.5rem;
-    background: var(--white);
-    border-top: 1px solid var(--gray-200);
-    flex-shrink: 0;
-}
-
-.action-choose {
-    background: var(--teal);
-    color: var(--white);
-    border: none;
-    border-radius: 8px;
-    padding: 0.7rem 1.25rem;
-    font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-    width: 100%;
-    text-align: center;
-}
-
-.action-choose:hover:not(:disabled) { background: #0d5469; }
-.action-choose:disabled { background: var(--gray-100); color: var(--gray-300); cursor: default; }
-
-.action-right { text-align: right; }
-
-.action-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-.neither-btn {
-    background: none;
-    border: 1px solid var(--gray-300);
-    color: var(--gray-600);
-    padding: 0.5rem 1.1rem;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    white-space: nowrap;
-}
-
-.neither-btn:hover:not(:disabled) { border-color: #C83B2A; color: #C83B2A; background: #FEF2F2; }
-.neither-btn:disabled { opacity: 0.4; cursor: default; }
-
-.skip-link {
-    font-size: 0.72rem;
-    color: var(--gray-400);
-    text-decoration: none;
-    transition: color 0.15s;
-}
-
-.skip-link:hover { color: var(--gray-600); }
-
-/* Lightbox */
+/* ── LIGHTBOX ── */
 .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 200; align-items: center; justify-content: center; padding: 2rem; cursor: zoom-out; }
-.lightbox-img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 4px; cursor: default; box-shadow: 0 32px 80px rgba(0,0,0,0.8); }
+.lightbox-img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 4px; cursor: default; }
 .lightbox-close { position: fixed; top: 1.25rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 201; font-size: 1rem; transition: background 0.15s; }
 .lightbox-close:hover { background: rgba(255,255,255,0.2); }
 </style>
@@ -169,6 +177,45 @@ body { overflow: hidden; }
     </div>
 </nav>
 
+<!-- Action bar — always visible at top -->
+<div class="action-bar" id="action-bar">
+    <button class="action-choose" id="choose-a" onclick="vote('a')" disabled>
+        <span class="choose-arrow">←</span>
+        <span class="choose-name" id="label-a">Loading...</span>
+    </button>
+
+    <div class="action-center">
+        <button class="neither-btn" id="neither-btn" onclick="neither()" disabled>Neither — both poor</button>
+        <a href="#" class="skip-link" id="skip-link">Skip this pair</a>
+    </div>
+
+    <button class="action-choose action-choose-b" id="choose-b" onclick="vote('b')" disabled>
+        <span class="choose-name" id="label-b">Loading...</span>
+        <span class="choose-arrow">→</span>
+    </button>
+</div>
+
+<!-- Slide panels -->
+<div class="panels">
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-name" id="title-a"></div>
+            <div class="panel-meta" id="meta-a"></div>
+        </div>
+        <div class="panel-slides" id="slides-a"></div>
+    </div>
+
+    <div class="vs-badge">VS</div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-name" id="title-b"></div>
+            <div class="panel-meta" id="meta-b"></div>
+        </div>
+        <div class="panel-slides" id="slides-b"></div>
+    </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
     <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
@@ -179,51 +226,6 @@ body { overflow: hidden; }
         <div class="spinner"></div>
         <p class="loading-title">Finding two decks to compare</p>
         <p class="loading-sub" id="loading-text">Loading...</p>
-    </div>
-</div>
-
-<div class="compare-page">
-    <div class="panels">
-
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-name" id="title-a"></div>
-                <div class="panel-meta" id="meta-a"></div>
-            </div>
-            <div class="panel-slides" id="slides-a"></div>
-        </div>
-
-        <div class="vs-badge">VS</div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-name" id="title-b"></div>
-                <div class="panel-meta" id="meta-b"></div>
-            </div>
-            <div class="panel-slides" id="slides-b"></div>
-        </div>
-
-    </div>
-
-    <div class="action-bar">
-        <div>
-            <button class="action-choose" id="choose-a" onclick="vote('a')" disabled>
-                ← Choose this deck
-            </button>
-        </div>
-
-        <div class="action-center">
-            <button class="neither-btn" id="neither-btn" onclick="neither()" disabled>
-                Neither — both poor
-            </button>
-            <a href="#" class="skip-link" id="skip-link">Skip this pair</a>
-        </div>
-
-        <div class="action-right">
-            <button class="action-choose" id="choose-b" onclick="vote('b')" disabled>
-                Choose this deck →
-            </button>
-        </div>
     </div>
 </div>
 
@@ -244,6 +246,10 @@ function openLightbox(src) {
 }
 function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+function shortName(filename) {
+    return filename.replace('.pptx', '').replace(/_/g, ' ');
+}
 
 function populateSlides(side, deck) {
     const container = document.getElementById(`slides-${side}`);
@@ -285,10 +291,16 @@ async function getPair() {
     }
     if (!found) { deckA = decks[0]; deckB = decks[1]; }
 
-    document.getElementById('title-a').textContent = deckA.filename.replace('.pptx', '');
-    document.getElementById('title-b').textContent = deckB.filename.replace('.pptx', '');
+    const nameA = shortName(deckA.filename);
+    const nameB = shortName(deckB.filename);
+
+    document.getElementById('label-a').textContent = nameA;
+    document.getElementById('label-b').textContent = nameB;
+    document.getElementById('title-a').textContent = nameA;
+    document.getElementById('title-b').textContent = nameB;
     document.getElementById('meta-a').textContent = `${deckA.slide_count} slides`;
     document.getElementById('meta-b').textContent = `${deckB.slide_count} slides`;
+
     populateSlides('a', deckA);
     populateSlides('b', deckB);
     document.getElementById('loading').style.display = 'none';
