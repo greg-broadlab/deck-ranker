@@ -3,10 +3,147 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Compare — Broadlab Deck Ranker</title>
+<title>Compare — BroadLab Deck Ranker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+.compare-main { height: calc(100vh - 56px); overflow: hidden; display: flex; flex-direction: column; }
+
+.compare-layout {
+    display: grid;
+    grid-template-columns: 1fr 48px 1fr;
+    flex: 1;
+    min-height: 0;
+}
+
+.deck-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--white);
+}
+
+.deck-col:first-child { border-right: 1px solid var(--gray-200); }
+
+.col-header {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--gray-100);
+    flex-shrink: 0;
+    background: var(--white);
+}
+
+.col-deck-name {
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--teal-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.col-slide-count {
+    font-size: 0.7rem;
+    color: var(--gray-400);
+    margin-top: 0.1rem;
+}
+
+.slides-scroll {
+    flex: 1;
+    overflow-y: auto;
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.slide-img { width: 100%; display: block; flex-shrink: 0; cursor: zoom-in; }
+
+.col-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--gray-100);
+    background: var(--white);
+    flex-shrink: 0;
+}
+
+.choose-btn {
+    width: 100%;
+    background: var(--teal);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 0.65rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.choose-btn:hover:not(:disabled) { background: #0d5469; }
+.choose-btn:disabled { background: var(--gray-100); color: var(--gray-300); cursor: default; }
+
+.vs-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: var(--gray-50);
+    border-left: 1px solid var(--gray-200);
+    border-right: 1px solid var(--gray-200);
+}
+
+.vs-badge {
+    font-weight: 700;
+    font-size: 0.65rem;
+    color: var(--gray-400);
+    letter-spacing: 0.1em;
+    writing-mode: vertical-rl;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 20px;
+    padding: 0.6rem 0.35rem;
+}
+
+.neither-btn {
+    writing-mode: vertical-rl;
+    background: none;
+    border: 1px solid var(--gray-200);
+    color: var(--gray-400);
+    font-family: inherit;
+    font-size: 0.6rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 20px;
+    padding: 0.6rem 0.3rem;
+    letter-spacing: 0.04em;
+    transition: border-color 0.15s, color 0.15s;
+    line-height: 1.3;
+}
+
+.neither-btn:hover:not(:disabled) { border-color: #C83B2A; color: #C83B2A; }
+.neither-btn:disabled { opacity: 0.4; cursor: default; }
+
+.skip-link {
+    writing-mode: vertical-rl;
+    color: var(--gray-300);
+    font-size: 0.6rem;
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: color 0.15s;
+}
+
+.skip-link:hover { color: var(--teal); }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 200; align-items: center; justify-content: center; padding: 2rem; cursor: zoom-out; }
+.lightbox-img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 4px; cursor: default; }
+.lightbox-close { position: fixed; top: 1.25rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 201; font-size: 1rem; transition: background 0.15s; }
+.lightbox-close:hover { background: rgba(255,255,255,0.2); }
+</style>
 </head>
 <body>
 <nav class="nav">
@@ -32,24 +169,35 @@
 
 <main class="compare-main">
     <div class="compare-layout">
+
         <div class="deck-col">
             <div class="col-header">
-                <span class="col-title" id="title-a"></span>
-                <button class="choose-btn" id="choose-a" onclick="vote('a')" disabled>Choose this one</button>
+                <div class="col-deck-name" id="title-a"></div>
+                <div class="col-slide-count" id="count-a"></div>
             </div>
             <div class="slides-scroll" id="slides-a"></div>
+            <div class="col-footer">
+                <button class="choose-btn" id="choose-a" onclick="vote('a')" disabled>Choose this deck</button>
+            </div>
         </div>
+
         <div class="vs-col">
             <div class="vs-badge">VS</div>
+            <button class="neither-btn" id="neither-btn" onclick="neither()" disabled>Neither</button>
             <a href="#" class="skip-link" id="skip-link">skip</a>
         </div>
+
         <div class="deck-col">
             <div class="col-header">
-                <span class="col-title" id="title-b"></span>
-                <button class="choose-btn" id="choose-b" onclick="vote('b')" disabled>Choose this one</button>
+                <div class="col-deck-name" id="title-b"></div>
+                <div class="col-slide-count" id="count-b"></div>
             </div>
             <div class="slides-scroll" id="slides-b"></div>
+            <div class="col-footer">
+                <button class="choose-btn" id="choose-b" onclick="vote('b')" disabled>Choose this deck</button>
+            </div>
         </div>
+
     </div>
 </main>
 
@@ -68,9 +216,7 @@ function openLightbox(src) {
     document.getElementById('lightbox-img').src = src;
     document.getElementById('lightbox').style.display = 'flex';
 }
-function closeLightbox() {
-    document.getElementById('lightbox').style.display = 'none';
-}
+function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 function populateSlides(side, deck) {
@@ -82,69 +228,68 @@ function populateSlides(side, deck) {
         img.src = src;
         img.className = 'slide-img';
         img.loading = i < 3 ? 'eager' : 'lazy';
-        img.title = 'Click to zoom';
         img.onclick = () => openLightbox(src);
         container.appendChild(img);
     }
 }
 
+function setButtons(enabled) {
+    ['choose-a', 'choose-b', 'neither-btn'].forEach(id => {
+        document.getElementById(id).disabled = !enabled;
+    });
+}
+
 async function getPair() {
     document.getElementById('loading-text').textContent = 'Fetching decks...';
-
-    // Get all decks in category ordered by fewest matches
     const decks = await SB.get(`/decks?category=eq.${category}&order=matches.asc&limit=40&cloudinary_prefix=not.is.null`);
     if (decks.length < 2) {
         document.getElementById('loading-text').textContent = 'Not enough decks uploaded yet.';
         return;
     }
-
-    // Get recent comparisons to avoid repeats
     const comps = await SB.get(`/comparisons?category=eq.${category}&select=winner_id,loser_id&order=created_at.desc&limit=500`);
-    const played = new Set(comps.map(c => `${c.winner_id}|${c.loser_id}`).concat(comps.map(c => `${c.loser_id}|${c.winner_id}`)));
+    const played = new Set(comps.flatMap(c => [`${c.winner_id}|${c.loser_id}`, `${c.loser_id}|${c.winner_id}`]));
 
-    // Find pair not yet played
     let found = false;
     for (let i = 0; i < decks.length && !found; i++) {
         for (let j = i + 1; j < decks.length && !found; j++) {
-            const key = `${decks[i].id}|${decks[j].id}`;
-            if (!played.has(key)) {
-                deckA = decks[i];
-                deckB = decks[j];
-                found = true;
+            if (!played.has(`${decks[i].id}|${decks[j].id}`)) {
+                deckA = decks[i]; deckB = decks[j]; found = true;
             }
         }
     }
-
-    // All played — just pick lowest match pair
-    if (!found) {
-        deckA = decks[0];
-        deckB = decks[1];
-    }
+    if (!found) { deckA = decks[0]; deckB = decks[1]; }
 
     document.getElementById('title-a').textContent = deckA.filename.replace('.pptx', '');
     document.getElementById('title-b').textContent = deckB.filename.replace('.pptx', '');
+    document.getElementById('count-a').textContent = `${deckA.slide_count} slides`;
+    document.getElementById('count-b').textContent = `${deckB.slide_count} slides`;
     populateSlides('a', deckA);
     populateSlides('b', deckB);
-
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('choose-a').disabled = false;
-    document.getElementById('choose-b').disabled = false;
+    setButtons(true);
 }
 
 async function vote(side) {
+    setButtons(false);
     const winner = side === 'a' ? deckA : deckB;
     const loser  = side === 'a' ? deckB : deckA;
-
-    document.querySelectorAll('.choose-btn').forEach(b => { b.disabled = true; b.textContent = '...'; });
-
-    const { winner: newWinnerElo, loser: newLoserElo } = calcElo(winner.elo, loser.elo);
-
+    const { winner: newW, loser: newL } = calcElo(winner.elo, loser.elo);
     await Promise.all([
         SB.post('/comparisons', { category, winner_id: winner.id, loser_id: loser.id }),
-        SB.patch(`/decks?id=eq.${winner.id}`, { elo: newWinnerElo, matches: winner.matches + 1 }),
-        SB.patch(`/decks?id=eq.${loser.id}`,  { elo: newLoserElo,  matches: loser.matches + 1  }),
+        SB.patch(`/decks?id=eq.${winner.id}`, { elo: newW, matches: winner.matches + 1 }),
+        SB.patch(`/decks?id=eq.${loser.id}`,  { elo: newL, matches: loser.matches + 1 }),
     ]);
+    location.href = `compare.html?cat=${category}`;
+}
 
+async function neither() {
+    setButtons(false);
+    const penalty = 10;
+    await Promise.all([
+        SB.post('/comparisons', { category, winner_id: deckA.id, loser_id: deckB.id }),
+        SB.patch(`/decks?id=eq.${deckA.id}`, { elo: deckA.elo - penalty, matches: deckA.matches + 1 }),
+        SB.patch(`/decks?id=eq.${deckB.id}`, { elo: deckB.elo - penalty, matches: deckB.matches + 1 }),
+    ]);
     location.href = `compare.html?cat=${category}`;
 }
 
