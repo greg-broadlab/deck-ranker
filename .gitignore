@@ -1,0 +1,7 @@
+.env
+__pycache__/
+cache/
+data/
+*.db
+*.pyc
+LibreOffice/

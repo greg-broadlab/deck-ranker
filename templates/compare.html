@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare {{ category_name }} — Broadlab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+        <div class="nav-links">
+            <span class="nav-category">{{ category_name }}</span>
+            <a href="/rankings/{{ category }}">Rankings</a>
+        </div>
+    </nav>
+
+    <div class="loading-overlay" id="loading">
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <p class="loading-title">Rendering slides</p>
+            <p class="loading-sub" id="loading-text">Starting up...</p>
+        </div>
+    </div>
+
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+    </div>
+
+    <main class="compare-main">
+        <div class="compare-layout">
+            <div class="deck-col" id="col-a">
+                <div class="col-header">
+                    <span class="col-title" title="{{ deck_a.filename }}">{{ deck_a.filename | replace('.pptx', '') }}</span>
+                    <button class="choose-btn" id="choose-a"
+                            onclick="vote('{{ deck_a.id }}', '{{ deck_b.id }}')" disabled>
+                        Choose this one
+                    </button>
+                </div>
+                <div class="slides-scroll" id="slides-a"></div>
+            </div>
+
+            <div class="vs-col">
+                <div class="vs-badge">VS</div>
+                <a href="/compare/{{ category }}" class="skip-link">skip</a>
+            </div>
+
+            <div class="deck-col" id="col-b">
+                <div class="col-header">
+                    <span class="col-title" title="{{ deck_b.filename }}">{{ deck_b.filename | replace('.pptx', '') }}</span>
+                    <button class="choose-btn" id="choose-b"
+                            onclick="vote('{{ deck_b.id }}', '{{ deck_a.id }}')" disabled>
+                        Choose this one
+                    </button>
+                </div>
+                <div class="slides-scroll" id="slides-b"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const DECKS = {
+            a: { id: '{{ deck_a.id }}' },
+            b: { id: '{{ deck_b.id }}' },
+        };
+        const CATEGORY = '{{ category }}';
+
+        function openLightbox(src) {
+            const lb = document.getElementById('lightbox');
+            document.getElementById('lightbox-img').src = src;
+            lb.style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeLightbox();
+        });
+
+        function populateSlides(side, count) {
+            const container = document.getElementById(`slides-${side}`);
+            const id = DECKS[side].id;
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const src = `/api/slide/${id}/${i}`;
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = 'slide-img';
+                img.loading = i < 3 ? 'eager' : 'lazy';
+                img.alt = `Slide ${i + 1}`;
+                img.title = 'Click to zoom';
+                img.onclick = () => openLightbox(src);
+                container.appendChild(img);
+            }
+        }
+
+        async function vote(winnerId, loserId) {
+            document.querySelectorAll('.choose-btn').forEach(b => {
+                b.disabled = true;
+                b.textContent = '...';
+            });
+            await fetch('/api/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: CATEGORY, winner_id: winnerId, loser_id: loserId })
+            });
+            window.location.href = `/compare/${CATEGORY}`;
+        }
+
+        async function pollStatus() {
+            const [ra, rb] = await Promise.all([
+                fetch(`/api/render-status/${DECKS.a.id}`).then(r => r.json()),
+                fetch(`/api/render-status/${DECKS.b.id}`).then(r => r.json()),
+            ]);
+
+            const loadingText = document.getElementById('loading-text');
+            if (ra.status === 'done' && rb.status === 'done') {
+                populateSlides('a', ra.slides_done);
+                populateSlides('b', rb.slides_done);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('choose-a').disabled = false;
+                document.getElementById('choose-b').disabled = false;
+            } else {
+                const done = (ra.slides_done || 0) + (rb.slides_done || 0);
+                loadingText.textContent = `Rendering slides... ${done} done`;
+                setTimeout(pollStatus, 2000);
+            }
+        }
+
+        pollStatus();
+    </script>
+</body>
+</html>

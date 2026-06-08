@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck Ranker — Broadlab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="nav">
+    <span class="nav-logo">broadlab<span>.</span>deck ranker</span>
+</nav>
+
+<div class="home-hero">
+    <div class="home-hero-text">
+        <h1>Which decks are actually good?</h1>
+        <p>Compare two at a time. The best ones rise to the top.</p>
+    </div>
+</div>
+
+<div class="home-content">
+    <div class="category-grid" id="grid">
+        <div class="loading-placeholder">Loading categories...</div>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+async function load() {
+    const decks = await SB.get('/decks?select=category,elo,filename,matches&order=elo.desc');
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    for (const [catId, catName] of Object.entries(CONFIG.categories)) {
+        const catDecks = decks.filter(d => d.category === catId);
+        const totalMatches = catDecks.reduce((s, d) => s + d.matches, 0) / 2 | 0;
+        const top5 = catDecks.slice(0, 5);
+
+        grid.innerHTML += `
+        <div class="category-card">
+            <div class="card-top">
+                <div class="card-title-row">
+                    <h2 class="card-title">${catName}</h2>
+                    <span class="card-count">${catDecks.length} decks</span>
+                </div>
+                <div class="card-matches">${totalMatches} comparisons</div>
+            </div>
+            ${top5.length ? `
+            <ol class="top-list">
+                ${top5.map((d, i) => `
+                <li class="top-item">
+                    <span class="top-rank ${i===0?'top-rank-1':i===1?'top-rank-2':i===2?'top-rank-3':''}">${i+1}</span>
+                    <span class="top-name" title="${d.filename}">${d.filename.replace('.pptx','')}</span>
+                    <span class="top-elo">${d.elo}</span>
+                </li>`).join('')}
+            </ol>` : '<p class="no-decks-yet">No comparisons yet.</p>'}
+            <div class="card-footer">
+                <a href="rankings.html?cat=${catId}" class="btn-secondary">Rankings</a>
+                ${catDecks.length >= 2
+                    ? `<a href="compare.html?cat=${catId}" class="btn-primary">Compare &rarr;</a>`
+                    : `<span class="btn-disabled">Need 2+ decks</span>`}
+            </div>
+        </div>`;
+    }
+}
+
+load();
+</script>
+</body>
+</html>

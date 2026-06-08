@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deck Ranker — Broadlab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <span class="nav-logo">broadlab<span>.</span>deck ranker</span>
+    </nav>
+
+    <div class="home-hero">
+        <div class="home-hero-text">
+            <h1>Which decks are actually good?</h1>
+            <p>Compare two at a time. The best ones rise to the top.</p>
+        </div>
+        <div class="hero-actions">
+            <button class="btn-scan" onclick="scanDecks(this)">Rescan folder</button>
+        </div>
+    </div>
+
+    <div class="home-content">
+        <div class="category-grid">
+            {% for cat_id, cat in categories.items() %}
+            <div class="category-card">
+                <div class="card-top">
+                    <div class="card-title-row">
+                        <h2 class="card-title">{{ cat.name }}</h2>
+                        <span class="card-count">{{ cat.count }} decks</span>
+                    </div>
+                    <div class="card-matches">{{ cat.matches }} comparison{{ 's' if cat.matches != 1 }}</div>
+                </div>
+
+                {% if cat.top %}
+                <ol class="top-list">
+                    {% for deck in cat.top %}
+                    <li class="top-item">
+                        <span class="top-rank {% if loop.index == 1 %}top-rank-1{% elif loop.index == 2 %}top-rank-2{% elif loop.index == 3 %}top-rank-3{% endif %}">
+                            {{ loop.index }}
+                        </span>
+                        <span class="top-name" title="{{ deck.filename }}">
+                            {{ deck.filename | replace('.pptx', '') }}
+                        </span>
+                        <span class="top-elo">{{ deck.elo }}</span>
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="no-decks-yet">No decks found yet.</p>
+                {% endif %}
+
+                <div class="card-footer">
+                    <button class="btn-analyse" onclick="openAnalyse('{{ cat_id }}', '{{ cat.name }}')">AI filter</button>
+                    <a href="/rankings/{{ cat_id }}" class="btn-secondary">Rankings</a>
+                    {% if cat.count >= 2 %}
+                    <a href="/compare/{{ cat_id }}" class="btn-primary">Compare &rarr;</a>
+                    {% else %}
+                    <span class="btn-disabled">Need 2+ decks</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Analyse modal -->
+    <div class="modal-overlay" id="analyse-modal" style="display:none" onclick="if(event.target===this)closeAnalyse()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-title">AI Quality Filter</h3>
+                <button class="modal-close" onclick="closeAnalyse()">&#x2715;</button>
+            </div>
+            <div id="modal-body">
+                <p class="modal-desc">Claude will read each deck and remove low-quality, incomplete, or template decks from the pool. This usually cuts 20–40% of decks.</p>
+                <label class="modal-label">Anthropic API key</label>
+                <input type="password" id="api-key-input" class="modal-input" placeholder="sk-ant-...">
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeAnalyse()">Cancel</button>
+                    <button class="btn-primary" id="run-btn" onclick="runAnalyse()">Run filter</button>
+                </div>
+            </div>
+            <div id="modal-results" style="display:none"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentCat = null;
+
+        async function scanDecks(btn) {
+            btn.textContent = 'Scanning...';
+            btn.disabled = true;
+            const res = await fetch('/api/scan', { method: 'POST' });
+            const data = await res.json();
+            btn.textContent = `Found ${data.scanned} — reloading`;
+            setTimeout(() => location.reload(), 800);
+        }
+
+        function openAnalyse(catId, catName) {
+            currentCat = catId;
+            document.getElementById('modal-title').textContent = `AI Quality Filter — ${catName}`;
+            document.getElementById('modal-body').style.display = 'block';
+            document.getElementById('modal-results').style.display = 'none';
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('run-btn').textContent = 'Run filter';
+            document.getElementById('analyse-modal').style.display = 'flex';
+        }
+
+        function closeAnalyse() {
+            document.getElementById('analyse-modal').style.display = 'none';
+        }
+
+        async function runAnalyse() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (!key) { alert('Enter your API key first'); return; }
+            const btn = document.getElementById('run-btn');
+            btn.disabled = true;
+            btn.textContent = 'Analysing...';
+
+            const res = await fetch(`/api/analyse/${currentCat}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: key })
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                btn.disabled = false;
+                btn.textContent = 'Run filter';
+                alert('Error: ' + data.error);
+                return;
+            }
+
+            document.getElementById('modal-body').style.display = 'none';
+            const resultsEl = document.getElementById('modal-results');
+            resultsEl.style.display = 'block';
+
+            const kept = data.results.filter(r => r.kept).length;
+            const removed = data.removed;
+
+            let html = `<p class="results-summary">Kept <strong>${kept}</strong> decks, removed <strong>${removed}</strong></p>`;
+            html += `<div class="results-list">`;
+            for (const r of data.results) {
+                html += `<div class="result-item ${r.kept ? 'kept' : 'removed'}">
+                    <span class="result-icon">${r.kept ? '✓' : '✕'}</span>
+                    <span class="result-name">${r.filename.replace('.pptx','')}</span>
+                    <span class="result-score">${r.score ?? '—'}/7</span>
+                </div>`;
+            }
+            html += `</div><div class="modal-actions"><button class="btn-primary" onclick="closeAnalyse();location.reload()">Done</button></div>`;
+            resultsEl.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

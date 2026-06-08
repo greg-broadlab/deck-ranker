@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rankings — Broadlab Deck Ranker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="nav">
+    <a href="index.html" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+    <div class="nav-links">
+        <span id="nav-cat" class="nav-category"></span>
+    </div>
+</nav>
+
+<main class="rankings-main">
+    <div class="rankings-header">
+        <div>
+            <h1 id="rankings-title">Rankings</h1>
+            <p id="rankings-sub"></p>
+        </div>
+        <a id="compare-link" href="#" class="btn-primary">Compare &rarr;</a>
+    </div>
+    <table class="rankings-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Deck</th>
+                <th>ELO</th>
+                <th>Matches</th>
+            </tr>
+        </thead>
+        <tbody id="rankings-body">
+            <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+        </tbody>
+    </table>
+</main>
+
+<script src="config.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const category = params.get('cat') || 'rtb';
+const catName = CONFIG.categories[category] || category.toUpperCase();
+
+document.getElementById('nav-cat').textContent = catName;
+document.getElementById('rankings-title').textContent = `${catName} Rankings`;
+document.getElementById('compare-link').href = `compare.html?cat=${category}`;
+
+async function load() {
+    const decks = await SB.get(`/decks?category=eq.${category}&order=elo.desc`);
+    const totalMatches = decks.reduce((s, d) => s + d.matches, 0) / 2 | 0;
+    document.getElementById('rankings-sub').textContent = `${decks.length} decks · ${totalMatches} comparisons`;
+
+    const body = document.getElementById('rankings-body');
+    if (!decks.length) {
+        body.innerHTML = '<tr><td colspan="4" class="empty-state">No decks found. Run the upload script first.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = decks.map((d, i) => `
+    <tr class="${i < 3 ? 'top-three' : ''}">
+        <td class="rank-cell">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+        <td class="name-cell" title="${d.filename}">${d.filename.replace('.pptx','')}</td>
+        <td class="elo-cell">${d.elo}</td>
+        <td class="matches-cell">${d.matches === 0 ? '<span class="unplayed">unplayed</span>' : d.matches}</td>
+    </tr>`).join('');
+}
+
+load();
+</script>
+</body>
+</html>

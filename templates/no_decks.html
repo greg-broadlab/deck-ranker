@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>No Decks — Broadlab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+    </nav>
+    <main class="empty-main">
+        <h2>Not enough decks in {{ category_name }}</h2>
+        <p>Need at least 2 decks with "{{ category_name }}" in the filename to compare.</p>
+        <a href="/" class="btn-primary">Back home</a>
+    </main>
+</body>
+</html>

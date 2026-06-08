@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compare — Broadlab Deck Ranker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="nav">
+    <a href="index.html" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+    <div class="nav-links">
+        <span class="nav-category" id="nav-cat"></span>
+        <a href="#" id="nav-rankings">Rankings</a>
+    </div>
+</nav>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<div class="loading-overlay" id="loading">
+    <div class="loading-box">
+        <div class="spinner"></div>
+        <p class="loading-title">Finding two decks to compare</p>
+        <p class="loading-sub" id="loading-text">Loading...</p>
+    </div>
+</div>
+
+<main class="compare-main">
+    <div class="compare-layout">
+        <div class="deck-col">
+            <div class="col-header">
+                <span class="col-title" id="title-a"></span>
+                <button class="choose-btn" id="choose-a" onclick="vote('a')" disabled>Choose this one</button>
+            </div>
+            <div class="slides-scroll" id="slides-a"></div>
+        </div>
+        <div class="vs-col">
+            <div class="vs-badge">VS</div>
+            <a href="#" class="skip-link" id="skip-link">skip</a>
+        </div>
+        <div class="deck-col">
+            <div class="col-header">
+                <span class="col-title" id="title-b"></span>
+                <button class="choose-btn" id="choose-b" onclick="vote('b')" disabled>Choose this one</button>
+            </div>
+            <div class="slides-scroll" id="slides-b"></div>
+        </div>
+    </div>
+</main>
+
+<script src="config.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const category = params.get('cat') || 'rtb';
+const catName = CONFIG.categories[category] || category.toUpperCase();
+let deckA = null, deckB = null;
+
+document.getElementById('nav-cat').textContent = catName;
+document.getElementById('nav-rankings').href = `rankings.html?cat=${category}`;
+document.getElementById('skip-link').href = `compare.html?cat=${category}`;
+
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').style.display = 'flex';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+function populateSlides(side, deck) {
+    const container = document.getElementById(`slides-${side}`);
+    container.innerHTML = '';
+    for (let i = 0; i < deck.slide_count; i++) {
+        const src = slideUrl(deck.cloudinary_prefix, i);
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'slide-img';
+        img.loading = i < 3 ? 'eager' : 'lazy';
+        img.title = 'Click to zoom';
+        img.onclick = () => openLightbox(src);
+        container.appendChild(img);
+    }
+}
+
+async function getPair() {
+    document.getElementById('loading-text').textContent = 'Fetching decks...';
+
+    // Get all decks in category ordered by fewest matches
+    const decks = await SB.get(`/decks?category=eq.${category}&order=matches.asc&limit=40&cloudinary_prefix=not.is.null`);
+    if (decks.length < 2) {
+        document.getElementById('loading-text').textContent = 'Not enough decks uploaded yet.';
+        return;
+    }
+
+    // Get recent comparisons to avoid repeats
+    const comps = await SB.get(`/comparisons?category=eq.${category}&select=winner_id,loser_id&order=created_at.desc&limit=500`);
+    const played = new Set(comps.map(c => `${c.winner_id}|${c.loser_id}`).concat(comps.map(c => `${c.loser_id}|${c.winner_id}`)));
+
+    // Find pair not yet played
+    let found = false;
+    for (let i = 0; i < decks.length && !found; i++) {
+        for (let j = i + 1; j < decks.length && !found; j++) {
+            const key = `${decks[i].id}|${decks[j].id}`;
+            if (!played.has(key)) {
+                deckA = decks[i];
+                deckB = decks[j];
+                found = true;
+            }
+        }
+    }
+
+    // All played — just pick lowest match pair
+    if (!found) {
+        deckA = decks[0];
+        deckB = decks[1];
+    }
+
+    document.getElementById('title-a').textContent = deckA.filename.replace('.pptx', '');
+    document.getElementById('title-b').textContent = deckB.filename.replace('.pptx', '');
+    populateSlides('a', deckA);
+    populateSlides('b', deckB);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('choose-a').disabled = false;
+    document.getElementById('choose-b').disabled = false;
+}
+
+async function vote(side) {
+    const winner = side === 'a' ? deckA : deckB;
+    const loser  = side === 'a' ? deckB : deckA;
+
+    document.querySelectorAll('.choose-btn').forEach(b => { b.disabled = true; b.textContent = '...'; });
+
+    const { winner: newWinnerElo, loser: newLoserElo } = calcElo(winner.elo, loser.elo);
+
+    await Promise.all([
+        SB.post('/comparisons', { category, winner_id: winner.id, loser_id: loser.id }),
+        SB.patch(`/decks?id=eq.${winner.id}`, { elo: newWinnerElo, matches: winner.matches + 1 }),
+        SB.patch(`/decks?id=eq.${loser.id}`,  { elo: newLoserElo,  matches: loser.matches + 1  }),
+    ]);
+
+    location.href = `compare.html?cat=${category}`;
+}
+
+getPair();
+</script>
+</body>
+</html>

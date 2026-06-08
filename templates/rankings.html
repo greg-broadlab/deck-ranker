@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category_name }} Rankings — Broadlab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+        <div class="nav-links">
+            {% for cat_id, cat_name in all_categories.items() %}
+            <a href="/rankings/{{ cat_id }}" class="{{ 'active' if cat_id == category }}">{{ cat_name }}</a>
+            {% endfor %}
+        </div>
+    </nav>
+
+    <main class="rankings-main">
+        <div class="rankings-header">
+            <div>
+                <h1>{{ category_name }} Rankings</h1>
+                <p>{{ decks | length }} decks &nbsp;·&nbsp; {{ total_matches }} comparisons</p>
+            </div>
+            <a href="/compare/{{ category }}" class="btn-primary">Compare now</a>
+        </div>
+
+        {% if decks %}
+        <table class="rankings-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Deck</th>
+                    <th>ELO</th>
+                    <th>Matches</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deck in decks %}
+                <tr class="{{ 'top-three' if loop.index <= 3 }}">
+                    <td class="rank-cell">
+                        {% if loop.index == 1 %}🥇
+                        {% elif loop.index == 2 %}🥈
+                        {% elif loop.index == 3 %}🥉
+                        {% else %}{{ loop.index }}{% endif %}
+                    </td>
+                    <td class="name-cell" title="{{ deck.filename }}">
+                        {{ deck.filename | replace('.pptx', '') }}
+                    </td>
+                    <td class="elo-cell">{{ deck.elo }}</td>
+                    <td class="matches-cell">
+                        {% if deck.matches == 0 %}
+                        <span class="unplayed">unplayed</span>
+                        {% else %}
+                        {{ deck.matches }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>No decks found for {{ category_name }}.</p>
+            <p>Make sure your PPTX files contain "{{ category_name }}" in the filename.</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>
