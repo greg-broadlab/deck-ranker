@@ -3,16 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rankings — Broadlab Deck Ranker</title>
+<title>Rankings — BroadLab Deck Ranker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+.rankings-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-600);
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.825rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tab-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+.tab-btn.active {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--white);
+    font-weight: 600;
+}
+</style>
 </head>
 <body>
 <nav class="nav">
-    <a href="index.html" class="nav-logo">broadlab<span>.</span>deck ranker</a>
+    <a href="index.html" class="nav-logo">BroadLab Deck Ranker</a>
     <div class="nav-links">
-        <span id="nav-cat" class="nav-category"></span>
+        <a id="compare-nav" href="#">Compare &rarr;</a>
     </div>
 </nav>
 
@@ -22,8 +52,10 @@
             <h1 id="rankings-title">Rankings</h1>
             <p id="rankings-sub"></p>
         </div>
-        <a id="compare-link" href="#" class="btn-primary">Compare &rarr;</a>
     </div>
+
+    <div class="rankings-tabs" id="tabs"></div>
+
     <table class="rankings-table">
         <thead>
             <tr>
@@ -42,21 +74,33 @@
 <script src="config.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
-const category = params.get('cat') || 'rtb';
-const catName = CONFIG.categories[category] || category.toUpperCase();
+let currentCat = params.get('cat') || 'rtb';
 
-document.getElementById('nav-cat').textContent = catName;
-document.getElementById('rankings-title').textContent = `${catName} Rankings`;
-document.getElementById('compare-link').href = `compare.html?cat=${category}`;
+// Build tabs
+const tabsEl = document.getElementById('tabs');
+for (const [catId, catName] of Object.entries(CONFIG.categories)) {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (catId === currentCat ? ' active' : '');
+    btn.textContent = catName;
+    btn.onclick = () => switchCat(catId);
+    tabsEl.appendChild(btn);
+}
 
-async function load() {
-    const decks = await SB.get(`/decks?category=eq.${category}&order=elo.desc`);
-    const totalMatches = decks.reduce((s, d) => s + d.matches, 0) / 2 | 0;
-    document.getElementById('rankings-sub').textContent = `${decks.length} decks · ${totalMatches} comparisons`;
+document.getElementById('compare-nav').href = `compare.html?cat=${currentCat}`;
 
+async function loadCat(catId) {
     const body = document.getElementById('rankings-body');
+    body.innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+
+    const decks = await SB.get(`/decks?category=eq.${catId}&order=elo.desc`);
+    const totalMatches = Math.floor(decks.reduce((s, d) => s + d.matches, 0) / 2);
+
+    document.getElementById('rankings-title').textContent = `${CONFIG.categories[catId]} Rankings`;
+    document.getElementById('rankings-sub').textContent = `${decks.length} decks · ${totalMatches} comparisons`;
+    document.getElementById('compare-nav').href = `compare.html?cat=${catId}`;
+
     if (!decks.length) {
-        body.innerHTML = '<tr><td colspan="4" class="empty-state">No decks found. Run the upload script first.</td></tr>';
+        body.innerHTML = '<tr><td colspan="4" class="empty-state">No decks found.</td></tr>';
         return;
     }
 
@@ -69,7 +113,16 @@ async function load() {
     </tr>`).join('');
 }
 
-load();
+function switchCat(catId) {
+    currentCat = catId;
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', Object.keys(CONFIG.categories)[i] === catId);
+    });
+    history.replaceState(null, '', `?cat=${catId}`);
+    loadCat(catId);
+}
+
+loadCat(currentCat);
 </script>
 </body>
 </html>
