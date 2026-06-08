@@ -29,8 +29,15 @@
 <script src="config.js"></script>
 <script>
 async function load() {
-    const decks = await SB.get('/decks?select=category,elo,filename,matches&order=elo.desc');
     const grid = document.getElementById('grid');
+    let decks;
+    try {
+        decks = await SB.get('/decks?select=category,elo,filename,matches&order=elo.desc');
+        if (!Array.isArray(decks)) throw new Error(JSON.stringify(decks));
+    } catch(e) {
+        grid.innerHTML = `<p style="color:red;padding:2rem">Error loading decks: ${e.message}</p>`;
+        return;
+    }
     grid.innerHTML = '';
 
     for (const [catId, catName] of Object.entries(CONFIG.categories)) {
