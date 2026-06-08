@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deck Ranker — Broadlab</title>
+<title>BroadLab Deck Ranker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -11,6 +11,9 @@
 <body>
 <nav class="nav">
     <span class="nav-logo">BroadLab Deck Ranker</span>
+    <div class="nav-links">
+        <a href="rankings.html">Rankings</a>
+    </div>
 </nav>
 
 <div class="home-hero">
@@ -27,22 +30,25 @@
 </div>
 
 <script src="config.js"></script>
+<script src="viewer.js"></script>
 <script>
+initViewer();
+
 async function load() {
     const grid = document.getElementById('grid');
     let decks;
     try {
-        decks = await SB.get('/decks?select=category,elo,filename,matches&order=elo.desc');
+        decks = await SB.get('/decks?select=id,category,elo,filename,matches,cloudinary_prefix,slide_count&order=elo.desc');
         if (!Array.isArray(decks)) throw new Error(JSON.stringify(decks));
     } catch(e) {
-        grid.innerHTML = `<p style="color:red;padding:2rem">Error loading decks: ${e.message}</p>`;
+        grid.innerHTML = `<p style="color:red;padding:2rem">Error: ${e.message}</p>`;
         return;
     }
     grid.innerHTML = '';
 
     for (const [catId, catName] of Object.entries(CONFIG.categories)) {
         const catDecks = decks.filter(d => d.category === catId);
-        const totalMatches = catDecks.reduce((s, d) => s + d.matches, 0) / 2 | 0;
+        const totalMatches = Math.floor(catDecks.reduce((s, d) => s + d.matches, 0) / 2);
         const top5 = catDecks.slice(0, 5);
 
         grid.innerHTML += `
@@ -60,6 +66,7 @@ async function load() {
                 <li class="top-item">
                     <span class="top-rank ${i===0?'top-rank-1':i===1?'top-rank-2':i===2?'top-rank-3':''}">${i+1}</span>
                     <span class="top-name" title="${d.filename}">${d.filename.replace('.pptx','')}</span>
+                    ${d.cloudinary_prefix ? `<button class="view-btn" onclick="openViewer('${d.filename.replace(/'/g,"\\'")}','${d.cloudinary_prefix}',${d.slide_count})">View</button>` : ''}
                     <span class="top-elo">${d.elo}</span>
                 </li>`).join('')}
             </ol>` : '<p class="no-decks-yet">No comparisons yet.</p>'}

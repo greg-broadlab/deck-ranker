@@ -10,11 +10,10 @@
 <style>
 .rankings-tabs {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.375rem;
     margin-bottom: 1.75rem;
     flex-wrap: wrap;
 }
-
 .tab-btn {
     background: var(--white);
     border: 1px solid var(--gray-200);
@@ -27,15 +26,11 @@
     cursor: pointer;
     transition: all 0.15s;
 }
-
 .tab-btn:hover { border-color: var(--teal); color: var(--teal); }
+.tab-btn.active { background: var(--teal); border-color: var(--teal); color: var(--white); font-weight: 600; }
 
-.tab-btn.active {
-    background: var(--teal);
-    border-color: var(--teal);
-    color: var(--white);
-    font-weight: 600;
-}
+.rankings-table th { cursor: default; }
+.view-col { width: 70px; text-align: center; }
 </style>
 </head>
 <body>
@@ -59,24 +54,27 @@
     <table class="rankings-table">
         <thead>
             <tr>
-                <th>Rank</th>
+                <th style="width:60px">Rank</th>
                 <th>Deck</th>
-                <th>ELO</th>
-                <th>Matches</th>
+                <th class="view-col">View</th>
+                <th style="width:80px">ELO</th>
+                <th style="width:100px">Matches</th>
             </tr>
         </thead>
         <tbody id="rankings-body">
-            <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
         </tbody>
     </table>
 </main>
 
 <script src="config.js"></script>
+<script src="viewer.js"></script>
 <script>
+initViewer();
+
 const params = new URLSearchParams(location.search);
 let currentCat = params.get('cat') || 'rtb';
 
-// Build tabs
 const tabsEl = document.getElementById('tabs');
 for (const [catId, catName] of Object.entries(CONFIG.categories)) {
     const btn = document.createElement('button');
@@ -86,13 +84,11 @@ for (const [catId, catName] of Object.entries(CONFIG.categories)) {
     tabsEl.appendChild(btn);
 }
 
-document.getElementById('compare-nav').href = `compare.html?cat=${currentCat}`;
-
 async function loadCat(catId) {
     const body = document.getElementById('rankings-body');
-    body.innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
 
-    const decks = await SB.get(`/decks?category=eq.${catId}&order=elo.desc`);
+    const decks = await SB.get(`/decks?category=eq.${catId}&order=elo.desc&select=id,filename,elo,matches,cloudinary_prefix,slide_count`);
     const totalMatches = Math.floor(decks.reduce((s, d) => s + d.matches, 0) / 2);
 
     document.getElementById('rankings-title').textContent = `${CONFIG.categories[catId]} Rankings`;
@@ -100,7 +96,7 @@ async function loadCat(catId) {
     document.getElementById('compare-nav').href = `compare.html?cat=${catId}`;
 
     if (!decks.length) {
-        body.innerHTML = '<tr><td colspan="4" class="empty-state">No decks found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="empty-state">No decks found.</td></tr>';
         return;
     }
 
@@ -108,6 +104,11 @@ async function loadCat(catId) {
     <tr class="${i < 3 ? 'top-three' : ''}">
         <td class="rank-cell">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
         <td class="name-cell" title="${d.filename}">${d.filename.replace('.pptx','')}</td>
+        <td class="view-col">
+            ${d.cloudinary_prefix
+                ? `<button class="view-btn" onclick="openViewer('${d.filename.replace(/'/g,"\\'")}','${d.cloudinary_prefix}',${d.slide_count})">View</button>`
+                : '—'}
+        </td>
         <td class="elo-cell">${d.elo}</td>
         <td class="matches-cell">${d.matches === 0 ? '<span class="unplayed">unplayed</span>' : d.matches}</td>
     </tr>`).join('');
